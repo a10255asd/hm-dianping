@@ -97,7 +97,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
                 .setIgnoreNullValue(true).setFieldValueEditor((filedName,filedValue)->filedValue.toString()));
         // 定时销毁
         redisTemplate.opsForHash().putAll(tokenKey ,userMap);
-        redisTemplate.expire(tokenKey,LOGIN_USER_TTL,TimeUnit.MINUTES);
+        redisTemplate.expire(tokenKey,LOGIN_USER_TTL,TimeUnit.SECONDS);
         // 8 返回 token
         return Result.ok(token);
     }
