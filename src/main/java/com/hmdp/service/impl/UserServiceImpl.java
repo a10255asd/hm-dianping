@@ -55,7 +55,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 4. 保存验证码到 redis
         redisTemplate.opsForValue().set(LOGIN_CODE_KEY + phone,code,LOGIN_CODE_TTL, TimeUnit.MINUTES);
         // 5. 发送验证码
-        log.debug("发送短信验证码成功，验证码:{}",code);
+        log.info("发送短信验证码成功，验证码:{}",code);
         // 返回 ok
         return Result.ok();
     }
@@ -70,7 +70,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             log.info("手机号格式错误，{}",phone);
             return Result.fail("手机号格式错误！");
         }
-        // TODO 3.从 redis获取验证码并校验
+        //  3.从 redis获取验证码并校验
         String cacheCode = redisTemplate.opsForValue().get(LOGIN_CODE_KEY + phone);
         String code = loginForm.getCode();
         if (cacheCode == null || !cacheCode.equals(code)){
@@ -92,11 +92,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //  7.2 将 user 对象转换为 hashMap 去存储
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
         //  7.3 存储
-        String tokenKey = LOGIN_USER_KEY;
+        String tokenKey = LOGIN_USER_KEY + token;
         Map<String,Object> userMap = BeanUtil.beanToMap(userDTO,new HashMap<>(), CopyOptions.create()
                 .setIgnoreNullValue(true).setFieldValueEditor((filedName,filedValue)->filedValue.toString()));
         // 定时销毁
-        redisTemplate.opsForHash().putAll( tokenKey + token,userMap);
+        redisTemplate.opsForHash().putAll(tokenKey ,userMap);
         redisTemplate.expire(tokenKey,LOGIN_USER_TTL,TimeUnit.MINUTES);
         // 8 返回 token
         return Result.ok(token);
