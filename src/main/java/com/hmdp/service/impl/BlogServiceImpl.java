@@ -5,6 +5,7 @@ import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hmdp.dto.Result;
+import com.hmdp.dto.ScrollResult;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.Blog;
 import com.hmdp.entity.Follow;
@@ -59,7 +60,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         }
         // 2.查询blog有关的用户
         queryBlogUser(blog);
-        // 3.查询blog是否背点赞
+        // 3.查询blog是否被点赞
         isBlogLiked(blog);
         return Result.ok(blog);
     }
@@ -187,14 +188,35 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         // 4. 解析数据 blogId，minTime(时间戳),offset
         List<Long> ids = new ArrayList<>(typedTuples.size());
         long minTime =0;
-        for (ZSetOperations.TypedTuple<String> typedTuple : typedTuples) {
+        int os = 1;
+        for (ZSetOperations.TypedTuple<String> tuple : typedTuples) {
             // 4.1 获取id
-            ids.add(Long.valueOf(typedTuple.getValue()));
-            // 4.2 获取分数
-            minTime = typedTuple.getScore().longValue();
+            ids.add(Long.valueOf(tuple.getValue()));
+            // 4.2 获取分数 (时间戳)
+            long time = tuple.getScore().longValue();
+            if(time == minTime){
+                os++;
+            }else {
+                minTime = time;
+                os = 1;
+            }
         }
         // 5. 根据id查询blog
+        String idStr = StrUtil.join(",", ids);
+        List<Blog> blogs = query()
+                .in("id",ids).last("order by field(id," + idStr +")")
+                .list();
+        for (Blog blog : blogs) {
+            // 查询blog有关的用户
+            queryBlogUser(blog);
+            // 查询blog是否被点赞
+            isBlogLiked(blog);
+        }
         // 6. 封装并返回
-
+        ScrollResult r = new ScrollResult();
+        r.setList(blogs);
+        r.setOffset(os);
+        r.setMinTime(minTime);
+        return Result.ok(r);
     }
 }
